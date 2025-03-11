@@ -1,7 +1,7 @@
 package edu.uob.CommandParser;
 
 public abstract class CommandParser {
-    private String commandType;
+    protected String commandType;
 
     // Abstract method, subclasses must implement the logic of parsing specific commands
     public abstract boolean parseCommand(String command);
