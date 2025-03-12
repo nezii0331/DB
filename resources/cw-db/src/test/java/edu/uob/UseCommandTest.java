@@ -1,5 +1,9 @@
-package test.java.edu.uob;
+package edu.uob;
+import edu.uob.CommandParser.CreateCommandParser;
+import edu.uob.CommandParser.UseCommandParser;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class UseCommandTest {
     @Test
@@ -50,7 +54,7 @@ public class UseCommandTest {
         assertTrue(parser.parseCommand("CREATE TABLE students (id, name, age);"));
         assertEquals("students", parser.getTableName());
         String[] expectedColumns = {"id", "name", "age"};
-        assertArrayEquals(expectedColumns, parser.getColumnName());
+        assertArrayEquals(expectedColumns, parser.getColumnNames());
     }
 
     @Test
@@ -59,7 +63,7 @@ public class UseCommandTest {
         assertTrue(parser.parseCommand("CREATE   TABLE   employees  (  id  ,  name  ,  department  )  ;"));
         assertEquals("employees", parser.getTableName());
         String[] expectedColumns = {"id", "name", "department"};
-        assertArrayEquals(expectedColumns, parser.getColumnName());
+        assertArrayEquals(expectedColumns, parser.getColumnNames());
     }
 
     @Test
@@ -68,7 +72,7 @@ public class UseCommandTest {
         assertTrue(parser.parseCommand("create table PRODUCTS (id, NAME, price);"));
         assertEquals("products", parser.getTableName());
         String[] expectedColumns = {"id", "NAME", "price"};
-        assertArrayEquals(expectedColumns, parser.getColumnName());
+        assertArrayEquals(expectedColumns, parser.getColumnNames());
     }
 
     @Test

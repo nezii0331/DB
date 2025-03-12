@@ -3,42 +3,39 @@ package edu.uob.CommandParser;
 public abstract class CommandParser {
     protected String commandType;
 
-    // Abstract method, subclasses must implement the logic of parsing specific commands
-    public abstract boolean parseCommand(String command);
-
-    // Factory method, creates and returns the corresponding command parser instance according to the command type
     public static CommandParser createParser(String command) {
-        // Convert the command string to uppercase and remove leading
-        // and trailing spaces to facilitate subsequent analysis
-        String liftCommand = command.trim().toUpperCase();
+        String upperCommand = command.trim().toUpperCase();
 
-        if (liftCommand.startsWith("USE ")) {
+        if (upperCommand.startsWith("USE ")) {
             return new UseCommandParser();
-        } else if (liftCommand.startsWith("CREATE DATABASE ")) {
+        } else if (upperCommand.startsWith("CREATE DATABASE ")) {
             return new CreateCommandParser();
-        } else if (liftCommand.startsWith("CREATE TABLE ")) {
+        } else if (upperCommand.startsWith("CREATE TABLE ")) {
             return new CreateCommandParser();
-        } else if (liftCommand.startsWith("DROP DATABASE ")) {
+        } else if (upperCommand.startsWith("DROP DATABASE ")) {
             return new DropCommandParser();
-        } else if (liftCommand.startsWith("DROP TABLE ")) {
+        } else if (upperCommand.startsWith("DROP TABLE ")) {
             return new DropCommandParser();
-        } else if (liftCommand.startsWith("ALTER TABLE ")) {
+        } else if (upperCommand.startsWith("ALTER TABLE ")) {
             return new AlterCommandParser();
-        } else if (liftCommand.startsWith("INSERT INTO ")) {
+        } else if (upperCommand.startsWith("INSERT INTO ")) {
             return new InsertCommandParser();
-        } else if (liftCommand.startsWith("SELECT ")) {
+        } else if (upperCommand.startsWith("SELECT ")) {
             return new SelectCommandParser();
-        } else if (liftCommand.startsWith("UPDATE ")) {
+        } else if (upperCommand.startsWith("UPDATE ")) {
             return new UpdateCommandParser();
-        } else if (liftCommand.startsWith("DELETE FROM ")) {
+        } else if (upperCommand.startsWith("DELETE FROM ")) {
             return new DeleteCommandParser();
-        } else if (liftCommand.startsWith("JOIN ")) {
+        } else if (upperCommand.startsWith("JOIN ")) {
             return new JoinCommandParser();
         }
+
         return null;
     }
 
-    public String getCommandType(){
+    public abstract boolean parseCommand(String command);
+
+    public String getCommandType() {
         return commandType;
     }
 }
