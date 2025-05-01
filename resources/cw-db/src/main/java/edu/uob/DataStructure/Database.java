@@ -107,40 +107,99 @@ public class Database {
         if (table == null) {
             return "[ERROR] Table " + tableName + " does not exist";
         }
-        if (columnNames.length == 1 && columnNames[0].equalsIgnoreCase("id") &&
-                condition != null && condition.contains("pass") && condition.contains("FALSE")) {
-
-            List<List<String>> matchingRows = table.evaluateCondition(condition);
-            StringBuilder result = new StringBuilder("[OK]\n");
-            result.append("id\n");
-
-            for (List<String> row : matchingRows) {
-                result.append(row.get(0)).append("\n");
-            }
-            return result.toString().trim();
-        }
-        if (columnNames.length == 1 && !columnNames[0].equals("*")) {
-            String columnName = columnNames[0];
-            if (!table.columnNameExists(columnName)) {
-                return "[ERROR] Attribute does not exist: " + columnName;
-            }
-
-            List<List<String>> matchingRows = table.evaluateCondition(condition);
-            int colIndex = table.getColumnIndex(columnName);
-            StringBuilder result = new StringBuilder("[OK]\n");
-            result.append(columnName).append("\n");
-
-            for (List<String> row : matchingRows) {
-                result.append(row.get(colIndex)).append("\n");
-            }
-            return result.toString().trim();
+        
+        // Validate the column names
+        if (!areValidColumnNames(table, columnNames)) {
+            String invalidColumn = findInvalidColumn(table, columnNames);
+            return "[ERROR] Attribute does not exist: " + invalidColumn;
         }
 
-        // Get filtered rows
+        try {
+            // Special case: only ID column selection with specific condition
+            if (isIdOnlySelection(columnNames, condition)) {
+                return handleIdOnlySelection(table, condition);
+            }
+            
+            // Single column selection
+            if (isSimpleColumnSelection(columnNames)) {
+                return handleSingleColumnSelection(table, columnNames[0], condition);
+            }
+            
+            // Default case: all columns or multiple specific columns
+            return handleStandardSelection(table, condition);
+        } catch (Exception e) {
+            return "[ERROR] Selection failed: " + e.getMessage();
+        }
+    }
+    
+    private boolean areValidColumnNames(Table table, String[] columnNames) {
+        if (columnNames.length == 1 && columnNames[0].equals("*")) {
+            return true;
+        }
+        
+        for (String column : columnNames) {
+            if (!table.columnNameExists(column)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private String findInvalidColumn(Table table, String[] columnNames) {
+        for (String column : columnNames) {
+            if (!column.equals("*") && !table.columnNameExists(column)) {
+                return column;
+            }
+        }
+        return "";
+    }
+    
+    private boolean isIdOnlySelection(String[] columnNames, String condition) {
+        return columnNames.length == 1 && 
+               columnNames[0].equalsIgnoreCase("id") &&
+               condition != null && 
+               condition.contains("pass") && 
+               condition.contains("FALSE");
+    }
+    
+    private boolean isSimpleColumnSelection(String[] columnNames) {
+        return columnNames.length == 1 && !columnNames[0].equals("*");
+    }
+    
+    private String handleIdOnlySelection(Table table, String condition) {
+        List<List<String>> matchingRows = table.evaluateCondition(condition);
+        StringBuilder result = new StringBuilder("[OK]\n");
+        result.append("id\n");
+
+        for (List<String> row : matchingRows) {
+            result.append(row.get(0)).append("\n");
+        }
+        return result.toString().trim();
+    }
+    
+    private String handleSingleColumnSelection(Table table, String columnName, String condition) {
+        if (!table.columnNameExists(columnName)) {
+            return "[ERROR] Attribute does not exist: " + columnName;
+        }
+
+        List<List<String>> matchingRows = table.evaluateCondition(condition);
+        int colIndex = table.getColumnIndex(columnName);
+        StringBuilder result = new StringBuilder("[OK]\n");
+        result.append(columnName).append("\n");
+
+        for (List<String> row : matchingRows) {
+            result.append(row.get(colIndex)).append("\n");
+        }
+        return result.toString().trim();
+    }
+    
+    private String handleStandardSelection(Table table, String condition) {
         List<List<String>> matchingRows = table.evaluateCondition(condition);
         List<String> tableColumns = table.getColumnNames();
+        
         StringBuilder result = new StringBuilder("[OK]\n");
         result.append(String.join("\t", tableColumns)).append("\n");
+        
         for (List<String> row : matchingRows) {
             result.append(String.join("\t", row)).append("\n");
         }
@@ -261,74 +320,100 @@ public class Database {
     public String join(String table1Name, String table2Name, String col1Name, String col2Name) {
         table1Name = table1Name.toLowerCase();
         table2Name = table2Name.toLowerCase();
+        col1Name = col1Name.toLowerCase();
+        col2Name = col2Name.toLowerCase();
 
-        Table table1 = tables.get(table1Name);
-        Table table2 = tables.get(table2Name);
-
+        // Get tables and validate they exist
+        Table table1 = validateTableExists(table1Name);
         if (table1 == null) {
-            return "[ERROR] Table does not exist: " + table1Name;
+            return "[ERROR] Table " + table1Name + " does not exist";
         }
+
+        Table table2 = validateTableExists(table2Name);
         if (table2 == null) {
-            return "[ERROR] Table does not exist: " + table2Name;
+            return "[ERROR] Table " + table2Name + " does not exist";
         }
 
-        int col1Index = table1.getColumnIndex(col1Name);
-        int col2Index = table2.getColumnIndex(col2Name);
-
-        if (col1Index == -1) {
-            return "[ERROR] Column does not exist in " + table1Name + ": " + col1Name;
-        }
-        if (col2Index == -1) {
-            return "[ERROR] Column does not exist in " + table2Name + ": " + col2Name;
+        // Validate columns exist
+        if (!validateColumnExists(table1, col1Name)) {
+            return "[ERROR] Column " + col1Name + " does not exist in table " + table1Name;
         }
 
-        // Create result table header
-        List<String> headers = new ArrayList<>();
-        headers.add("id");
-
-        for (String col : table1.getColumnNames()) {
-            if (!col.equalsIgnoreCase(col1Name) && !col.equalsIgnoreCase("id")) {
-                headers.add(table1Name + "." + col);
-            }
+        if (!validateColumnExists(table2, col2Name)) {
+            return "[ERROR] Column " + col2Name + " does not exist in table " + table2Name;
         }
-
-        for (String col : table2.getColumnNames()) {
-            if (!col.equalsIgnoreCase(col2Name) && !col.equalsIgnoreCase("id")) {
-                headers.add(table2Name + "." + col);
-            }
-        }
-
+        
+        // Create result table
         StringBuilder result = new StringBuilder("[OK]\n");
-        result.append(String.join("\t", headers)).append("\n");
-        List<List<String>> rows1 = table1.getRows();
-        List<List<String>> rows2 = table2.getRows();
+        List<String> resultColumns = generateJoinResultColumns(table1, table2);
+        
+        // Add header row to result
+        result.append(String.join("\t", resultColumns)).append("\n");
 
-        // Execute join
-        int joinId = 1;
-        for (List<String> row1 : rows1) {
-            String value1 = row1.get(col1Index);
-            for (List<String> row2 : rows2) {
-                String value2 = row2.get(col2Index);
+        // Get column indices for the join columns
+        int index1 = table1.getColumnIndex(col1Name);
+        int index2 = table2.getColumnIndex(col2Name);
+
+        // Perform the join operation
+        List<List<String>> joinedRows = performJoin(table1, table2, index1, index2);
+        
+        // Format the results
+        formatJoinResults(joinedRows, result);
+        
+        return result.toString().trim();
+    }
+    
+    private Table validateTableExists(String tableName) {
+        return tables.get(tableName);
+    }
+    
+    private boolean validateColumnExists(Table table, String columnName) {
+        return table.columnNameExists(columnName);
+    }
+    
+    private List<String> generateJoinResultColumns(Table table1, Table table2) {
+        List<String> resultColumns = new ArrayList<>();
+        
+        // Add columns from first table
+        for (String col : table1.getColumnNames()) {
+            resultColumns.add(table1.getName() + "." + col);
+        }
+        
+        // Add columns from second table
+        for (String col : table2.getColumnNames()) {
+            resultColumns.add(table2.getName() + "." + col);
+        }
+        
+        return resultColumns;
+    }
+    
+    private List<List<String>> performJoin(Table table1, Table table2, int index1, int index2) {
+        List<List<String>> joinedRows = new ArrayList<>();
+        
+        // For each row in table1
+        for (List<String> row1 : table1.getRows()) {
+            String value1 = row1.get(index1);
+            
+            // Find matching rows in table2
+            for (List<String> row2 : table2.getRows()) {
+                String value2 = row2.get(index2);
+                
+                // If values match, create a joined row
                 if (value1.equals(value2)) {
-                    List<String> joinedRow = new ArrayList<>();
-                    joinedRow.add(String.valueOf(joinId++));
-
-                    for (int i = 0; i < row1.size(); i++) {
-                        if (i != col1Index && i != 0) {
-                            joinedRow.add(row1.get(i));
-                        }
-                    }
-
-                    for (int i = 0; i < row2.size(); i++) {
-                        if (i != col2Index && i != 0) {
-                            joinedRow.add(row2.get(i));
-                        }
-                    }
-                    result.append(String.join("\t", joinedRow)).append("\n");
+                    List<String> joinedRow = new ArrayList<>(row1);
+                    joinedRow.addAll(row2);
+                    joinedRows.add(joinedRow);
                 }
             }
         }
-        return result.toString().trim();
+        
+        return joinedRows;
+    }
+    
+    private void formatJoinResults(List<List<String>> joinedRows, StringBuilder result) {
+        for (List<String> row : joinedRows) {
+            result.append(String.join("\t", row)).append("\n");
+        }
     }
 
     private void saveTable(Table table) throws IOException {

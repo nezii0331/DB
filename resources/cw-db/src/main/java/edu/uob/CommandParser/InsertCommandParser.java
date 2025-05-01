@@ -35,19 +35,37 @@ public class InsertCommandParser extends CommandParser {
         values.clear();
         boolean inQuotes = false;
         StringBuilder currentValue = new StringBuilder();
+        boolean valueHasStartQuote = false;
 
         for (int i = 0; i < valuesStr.length(); i++) {
             char c = valuesStr.charAt(i);
 
             if (c == '\'') {
                 inQuotes = !inQuotes;
+                if (inQuotes) {
+                    valueHasStartQuote = true;
+                } else if (valueHasStartQuote) {
+                    // Found matching end quote
+                    valueHasStartQuote = false;
+                }
                 currentValue.append(c);
             } else if (c == ',' && !inQuotes) {
+                // Check if this value had an opening quote but no closing quote
+                if (valueHasStartQuote) {
+                    throw new IllegalArgumentException("Missing closing quote in value: " + currentValue.toString());
+                }
+                
                 values.add(currentValue.toString().trim());
                 currentValue = new StringBuilder();
+                valueHasStartQuote = false;
             } else {
                 currentValue.append(c);
             }
+        }
+        
+        // Check for unmatched quotes in the last value
+        if (inQuotes) {
+            throw new IllegalArgumentException("Missing closing quote in value: " + currentValue.toString());
         }
         
         if (currentValue.length() > 0) {

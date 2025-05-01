@@ -112,6 +112,28 @@ public class DBServer {
                 if (!isValidPlainText(colName)) {
                     return "[ERROR] Invalid column name: " + colName;
                 }
+                // Check if column name is a reserved keyword
+                if (isReservedKeyword(colName)) {
+                    return "[ERROR] Column name cannot be a reserved SQL keyword: " + colName;
+                }
+            }
+            
+            // Check for duplicate column names
+            String[] columnNames = createParser.getColumnNames();
+            for (int i = 0; i < columnNames.length; i++) {
+                for (int j = i + 1; j < columnNames.length; j++) {
+                    if (columnNames[i].equalsIgnoreCase(columnNames[j])) {
+                        return "[ERROR] Duplicate column name: " + columnNames[i];
+                    }
+                }
+            }
+        } else if (cmdType.equals("ALTER TABLE")) {
+            AlterCommandParser alterParser = (AlterCommandParser) parser;
+            if (alterParser.getAlterType().equalsIgnoreCase("ADD")) {
+                String attributeName = alterParser.getAttributeName();
+                if (isReservedKeyword(attributeName)) {
+                    return "[ERROR] Column name cannot be a reserved SQL keyword: " + attributeName;
+                }
             }
         }
         return null; // Validation passed
@@ -122,6 +144,29 @@ public class DBServer {
      */
     private boolean isValidPlainText(String text) {
         return text != null && text.matches("[a-zA-Z0-9]+");
+    }
+
+    /**
+     * Check if the given string is a reserved SQL keyword
+     */
+    private boolean isReservedKeyword(String word) {
+        if (word == null) return false;
+        
+        String[] keywords = {
+            "ADD", "ALL", "ALTER", "AND", "AS", "ASC", "BETWEEN", "BY", "CASE", "CREATE", 
+            "DATABASE", "DELETE", "DESC", "DISTINCT", "DROP", "EXISTS", "FROM", "GROUP", 
+            "HAVING", "IN", "INSERT", "INTO", "IS", "JOIN", "LIKE", "LIMIT", "NOT", 
+            "NULL", "OR", "ORDER", "SELECT", "SET", "TABLE", "TRUE", "FALSE", "UPDATE", 
+            "VALUES", "WHERE", "ON", "USING"
+        };
+        
+        for (String keyword : keywords) {
+            if (keyword.equalsIgnoreCase(word)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
